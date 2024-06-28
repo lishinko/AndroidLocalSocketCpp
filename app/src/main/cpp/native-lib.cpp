@@ -7,7 +7,7 @@
 
 #define LOG_TAG "LocalSocketServer"
 #define LOGD(...) __android_log_print(ANDROID_LOG_DEBUG, LOG_TAG, __VA_ARGS__)
-static const char SOCKET_NAME[] = "\0com.saturnv.hmi.sr.socket";
+static const char SOCKET_NAME[] = "\0com.saturnv.hmi.sr.socket";//\0表示linux abstract space, 对应kotlin版本，没有\0,但是地址类型要选择abstract
 
 extern "C" JNIEXPORT jstring
 JNICALL
@@ -32,7 +32,6 @@ Java_com_example_testandroidcpp_MainActivity_testLocalSocketServer(JNIEnv *env, 
     struct sockaddr_un server_addr, client_addr;
     socklen_t client_addr_len;
 
-//    server_sock = socket(AF_LOCAL, SOCK_STREAM, 0);
     server_sock = socket(AF_UNIX, SOCK_STREAM, 0);
     if (server_sock < 0) {
         LOGD("Failed to create socket");
@@ -42,11 +41,6 @@ Java_com_example_testandroidcpp_MainActivity_testLocalSocketServer(JNIEnv *env, 
     memset(&server_addr, 0, sizeof(server_addr));
     server_addr.sun_family = AF_UNIX;
     memcpy(server_addr.sun_path, SOCKET_NAME, sizeof(SOCKET_NAME)-1);
-//    server_addr.sun_path[0] = '\0';
-//    strcpy(server_addr.sun_path+1, SOCKET_NAME);
-//    const char* nameStart = server_addr.sun_path + 1;
-//    LOGD("name = %s", nameStart);
-//    strcpy(server_addr.sun_path, SOCKET_NAME);
 
     unlink(SOCKET_NAME);
     const int addressLength = sizeof(server_addr.sun_family) + sizeof(SOCKET_NAME) - 1;
