@@ -1,0 +1,2 @@
+# AndroidLocalSocketCpp
+测试Cpp版本的LocalSocket.unity提供的UnixDomainEndPoint只能自己连接自己，所以先用C++实现测试一把
