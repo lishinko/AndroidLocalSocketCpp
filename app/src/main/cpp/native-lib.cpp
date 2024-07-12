@@ -12,6 +12,8 @@
 #include <condition_variable>
 #include <queue>
 #include <functional>
+#include "SingleThreadTask.h"
+#include <memory>
 
 #define LOG_TAG "LocalSocketServer"
 #define LOGD(...) __android_log_print(ANDROID_LOG_DEBUG, LOG_TAG, __VA_ARGS__)
@@ -38,17 +40,11 @@ Java_com_example_testandroidcpp_MainActivity_testLocalSocketServer(JNIEnv *env, 
 
 }
 
-static saturnv::NativeEngine* s_engine;
+static std::unique_ptr< saturnv::NativeEngine> s_engine;
 
-static std::queue<std::function<void()>> s_tasks;
-static std::mutex s_tasksLock;
-
-static std::thread s_glThread;
-static std::atomic_bool s_glThreadRunning = false;
 static std::atomic_bool s_testThreadRunning = false;
 static std::thread s_testThread;
-static std::condition_variable s_taskVar;
-static std::mutex s_taskVarLock;
+static std::unique_ptr<saturnv::SingleThreadTask> s_taskManager;
 
 static const int Width = 1920;
 static const int Height = 1536;
@@ -60,10 +56,9 @@ void startTestThread(){
     }
     s_testThread = std::thread([](){
         int value = 1;
-        while (s_glThreadRunning && s_testThreadRunning)
+        while (s_taskManager != nullptr && s_testThreadRunning)
         {
-            s_tasksLock.lock();
-            s_tasks.push([value](){
+            s_taskManager->Enqueue([value](){
                 //这段代码在opengl线程执行!
                 if(s_engine != nullptr){
                     std::vector<char> pixels(Width * Height * 4);
@@ -72,11 +67,6 @@ void startTestThread(){
                     s_engine->UpdateTexture(0,bytes, pixels.size());
                 }
             });
-            s_tasksLock.unlock();
-
-            s_taskVar.notify_one();
-            std::chrono::milliseconds dur(30);
-            std::this_thread::sleep_for(dur);
             value++;
             if(value >= 255)
             {
@@ -91,15 +81,15 @@ void stopTestThread(){
         s_testThread.join();
     }
 }
-GLuint getTexture(int id){
-    if(s_glThreadRunning && s_engine != nullptr)
+uint32_t getTexture(int32_t id){
+    if(s_taskManager != nullptr && s_engine != nullptr)
     {
         return  s_engine->GetTextureId(id);
     }
     return 0;
 }
 void startService(){
-    if(s_glThreadRunning){
+    if(s_taskManager != nullptr){
         LOGE("%s:%d : already inited !, ", __FILE_NAME__, __LINE__);
         return;
     }
@@ -123,53 +113,28 @@ void startService(){
     const GLubyte* v = glGetString(GL_VERSION);
     LOGI("%s:%d : error = %d: version = %s!", __FILE_NAME__, __LINE__, eglGetError(), v);
 
-    s_glThreadRunning = true;
-    s_glThread = std::thread([c, config](){
-        s_engine = new saturnv::NativeEngine(c, config);
-        if(s_glThreadRunning)
-        {
-            if(!s_engine->InitOpenGL()){
-                LOGE("%s:%d : error = %d: s_engine->InitOpenGL() failed!", __FILE_NAME__, __LINE__, eglGetError());
-                return;
-            }
-            if(!s_engine->CreateTexture(4))
-            {
-                return;
-            }
-            std::unique_lock lock(s_taskVarLock);
-            while (s_glThreadRunning)
-            {
-                std::chrono::milliseconds waitDur(1000);
-                s_taskVar.wait_for(lock,waitDur);
-                //下面的wait，empty函数没有锁的保护，感觉不合适。
-//                s_taskVar.wait(lock, [](){
-//                    return s_glThreadRunning && !s_tasks.empty();
-//                });
-                std::lock_guard guard(s_tasksLock);
-                if(s_tasks.empty())//wait失败，可能是虚假唤醒
-                {
-                    continue;
-                }
-                auto func = s_tasks.front();
-                s_tasks.pop();
-                func();
-            }
+    if(s_taskManager == nullptr)
+    {
+        s_taskManager = std::make_unique<saturnv::SingleThreadTask>();
+    }
+    s_taskManager->Enqueue([c, config](){
+        s_engine = std::make_unique<saturnv::NativeEngine>(c, config);
+        if(!s_engine->InitOpenGL()){
+            LOGE("%s:%d : error = %d: s_engine->InitOpenGL() failed!", __FILE_NAME__, __LINE__, eglGetError());
+            return;
         }
-        else
+        if(!s_engine->CreateTexture(4))
         {
-            if(s_engine != nullptr)
-            {
-                delete s_engine;
-                s_engine = nullptr;
-            }
+            return;
         }
     });
 }
 void stopService(){
-    s_glThreadRunning = false;
-    if(s_glThread.joinable())
-    {
-        s_glThread.join();
+    if(s_taskManager != nullptr){
+        s_taskManager.release();
+    }
+    if(s_engine != nullptr){
+        s_engine.release();
     }
 }
 

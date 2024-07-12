@@ -11,7 +11,7 @@ extern "C"{
 #endif
     void startTestThread();
     void stopTestThread();
-    GLuint getTexture(int id);
+    uint32_t getTexture(int32_t id);
     void startService();
     void stopService();
 #ifdef __cplusplus
