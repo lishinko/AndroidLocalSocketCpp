@@ -13,6 +13,7 @@
 #include <queue>
 #include <functional>
 #include "SingleThreadTask.h"
+#include "GLTextureInterface.h"
 #include <memory>
 
 #define LOG_TAG "LocalSocketServer"
@@ -49,6 +50,30 @@ static std::unique_ptr<saturnv::SingleThreadTask> s_taskManager;
 static const int Width = 1920;
 static const int Height = 1536;
 
+extern "C" int32_t enqueueTask(HandleTask* handleCallback,DisposeTaskData* disposeCallback, TaskData* data){
+    if(s_taskManager != nullptr)
+    {
+        s_taskManager->Enqueue([handleCallback, disposeCallback, data](){
+            if(handleCallback != nullptr){
+                auto ret = (*handleCallback)(data);
+                if(ret != 0)
+                {
+                    LOGE("%s:%d :  handleCallback !, ret = %d", __FILE_NAME__, __LINE__, ret);
+                }
+                if(disposeCallback){
+                    (*disposeCallback)(data);
+                }
+                return;
+            }
+            else{
+                LOGE("%s:%d :  handleCallback == nullptr!!, ret = %d", __FILE_NAME__, __LINE__);
+                return;
+            }
+        });
+        return 0;
+    }
+    return -1;
+}
 extern "C" void startTestThread(){
     LOGI("%s:%d : startTestThread !, ", __FILE_NAME__, __LINE__);
     if(s_testThread.joinable())
