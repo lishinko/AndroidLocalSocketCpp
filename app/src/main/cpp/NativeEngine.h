@@ -17,6 +17,8 @@ namespace saturnv {
         bool CreateTexture(int textureNum);
         int GetTextureId(int id);
         bool UpdateTexture(int id, const char* data, int dataLength);
+        //是否启动opengl成功，可以继续了？
+        bool Running_AnyThread();
     private:
         bool InitDisplay();
         EGLDisplay mEglDisplay;
@@ -36,6 +38,8 @@ namespace saturnv {
         //gluint，在egl里面，和gl里面定义不一致。
         unsigned int* mTextures;
         int mTextureNum;
+
+        bool mCreateTextureSuccess = false;
     };
 
 } // saturnv

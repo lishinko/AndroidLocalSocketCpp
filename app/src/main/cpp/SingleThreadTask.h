@@ -21,7 +21,7 @@ namespace saturnv {
         std::mutex s_tasksLock;
 
         std::thread s_glThread;
-        std::atomic_bool s_glThreadRunning = false;
+        std::atomic_bool s_glThreadRunning;
         std::condition_variable s_taskVar;
         std::mutex s_taskVarLock;
 

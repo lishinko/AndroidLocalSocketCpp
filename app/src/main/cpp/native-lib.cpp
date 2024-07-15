@@ -42,18 +42,21 @@ Java_com_example_testandroidcpp_MainActivity_testLocalSocketServer(JNIEnv *env, 
 
 static std::unique_ptr< saturnv::NativeEngine> s_engine;
 
-static std::atomic_bool s_testThreadRunning = false;
+static std::atomic_bool s_testThreadRunning;
 static std::thread s_testThread;
 static std::unique_ptr<saturnv::SingleThreadTask> s_taskManager;
 
 static const int Width = 1920;
 static const int Height = 1536;
 
-void startTestThread(){
+extern "C" void startTestThread(){
+    LOGI("%s:%d : startTestThread !, ", __FILE_NAME__, __LINE__);
     if(s_testThread.joinable())
     {
         LOGE("%s:%d : already run !, ", __FILE_NAME__, __LINE__);
+        return;
     }
+    s_testThreadRunning = true;
     s_testThread = std::thread([](){
         int value = 1;
         while (s_taskManager != nullptr && s_testThreadRunning)
@@ -64,31 +67,42 @@ void startTestThread(){
                     std::vector<char> pixels(Width * Height * 4);
                     memset(pixels.data(),value,pixels.size() );
                     auto* bytes = pixels.data();
-                    s_engine->UpdateTexture(0,bytes, pixels.size());
+                    LOGI("VALUE  = %d", value);
+                    auto id = s_engine->GetTextureId(0);
+                    s_engine->UpdateTexture(id,bytes, pixels.size());
                 }
             });
             value++;
             if(value >= 255)
             {
-                value = 1;
+                value = 10;
             }
         }
     });
 }
-void stopTestThread(){
+
+extern "C" bool serviceRunning(){
+    return s_engine != nullptr && s_engine->Running_AnyThread();
+}
+extern "C" void stopTestThread(){
+    LOGI("%s:%d : stopTestThread !, ", __FILE_NAME__, __LINE__);
     s_testThreadRunning = false;
     if(s_testThread.joinable()){
         s_testThread.join();
     }
 }
-uint32_t getTexture(int32_t id){
+extern "C" uint32_t getTexture(int32_t id){
+    LOGI("%s:%d : getTexture !, id = %d", __FILE_NAME__, __LINE__, id);
     if(s_taskManager != nullptr && s_engine != nullptr)
     {
-        return  s_engine->GetTextureId(id);
+        auto ret =  s_engine->GetTextureId(id);
+        LOGI("%s:%d : getTexture !, id = %d, ret = %d", __FILE_NAME__, __LINE__, id, ret);
+        return ret;
     }
     return 0;
 }
-void startService(){
+extern "C" void startService(){
+    LOGI("%s:%d : startService !, ", __FILE_NAME__, __LINE__);
     if(s_taskManager != nullptr){
         LOGE("%s:%d : already inited !, ", __FILE_NAME__, __LINE__);
         return;
@@ -129,7 +143,8 @@ void startService(){
         }
     });
 }
-void stopService(){
+extern "C" void stopService(){
+    LOGI("%s:%d : stopService !, ", __FILE_NAME__, __LINE__);
     if(s_taskManager != nullptr){
         s_taskManager.release();
     }

@@ -8,7 +8,7 @@
 #include <EGL/egl.h>
 #include <vector>
 #define LOG_TAG "LocalSocketServer"
-#define LOGD(...) __android_log_print(ANDROID_LOG_DEBUG, LOG_TAG, __VA_ARGS__)
+#define LOGI(...) __android_log_print(ANDROID_LOG_DEBUG, LOG_TAG, __VA_ARGS__)
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
 static const int Width = 1920;
 static const int Height = 1536;
@@ -44,16 +44,18 @@ namespace saturnv {
     }
 
     bool NativeEngine::CreateTexture(int textureNum) {
+        LOGI("%s:%d : CreateTexture num = %d!", __FILE_NAME__, __LINE__, textureNum);
         mTextureNum = textureNum;
         mTextures = new GLuint[textureNum];
         glGenTextures(textureNum,mTextures);
-        auto e =eglGetError();
+        auto e =glGetError();
         if(e != 0){
-            LOGE("%s:%d : error = %d: glGenTexture failed!", __FILE_NAME__, __LINE__, e);
+            LOGE("%s:%d : error = %x: glGenTexture failed!", __FILE_NAME__, __LINE__, e);
             return false;
         }
+        LOGI("%s:%d : CreateTexture num = %d! ids = %x, %x, %x, %x", __FILE_NAME__, __LINE__, textureNum, mTextures[0], mTextures[1], mTextures[2], mTextures[3]);
         std::vector<char> pixels(Width * Height * 4);
-        memset(pixels.data(),222,pixels.size() );
+        memset(pixels.data(),111,pixels.size() );
         for(int i = 0; i <textureNum;i++ )
         {
             auto* bytes = pixels.data();
@@ -61,6 +63,7 @@ namespace saturnv {
                 continue;
             }
         }
+        mCreateTextureSuccess = true;
         return true;
     }
 
@@ -75,6 +78,7 @@ namespace saturnv {
     }
 
     int NativeEngine::GetTextureId(int id) {
+        LOGI("NativeEngine::GetTextureId, id = %d, m = %llx, num = %d", id, mTextures, mTextureNum);
         if(mTextures != nullptr && id < mTextureNum){
             return  mTextures[id];
         }
@@ -100,12 +104,13 @@ namespace saturnv {
             LOGE("%s:%d : error = %d: eglInitialize failed!", __FILE_NAME__, __LINE__, eglGetError());
             return false;
         }
-        EGLSurface s = eglCreatePbufferSurface(mEglDisplay,mSharedConfig, attri);
-        if(s == nullptr){
+        int surfaceAttribList[] = {EGL_WIDTH, 1920, EGL_HEIGHT, 1536, EGL_NONE};
+        mEglSurface = eglCreatePbufferSurface(mEglDisplay,mSharedConfig, surfaceAttribList);
+        if(mEglSurface == nullptr){
             LOGE("%s:%d : error = %d: eglCreatePbufferSurface failed!", __FILE_NAME__, __LINE__, eglGetError());
             return false;
         }
-        if(!eglMakeCurrent(mEglDisplay, s, s, mEglContext)){
+        if(!eglMakeCurrent(mEglDisplay, mEglSurface, mEglSurface, mEglContext)){
             LOGE("%s:%d : error = %d: eglCreatePbufferSurface failed!", __FILE_NAME__, __LINE__, eglGetError());
             return false;
         }
@@ -115,9 +120,9 @@ namespace saturnv {
 
     bool NativeEngine::UpdateTexture(int id, const char *data, int dataLength) {
         glBindTexture(GL_TEXTURE_2D, id);
-        auto e =eglGetError();
+        auto e =glGetError();
         if(e != 0){
-            LOGE("%s:%d : error = %d: glBindTexture failed!", __FILE_NAME__, __LINE__, e);
+            LOGE("%s:%d : error = %x: glBindTexture failed!", __FILE_NAME__, __LINE__, e);
             return  false;
         }
         glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER, GL_LINEAR);
@@ -125,12 +130,17 @@ namespace saturnv {
         glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
         glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
         glTexImage2D(GL_TEXTURE_2D,0, GL_RGBA,Width, Height,0,GL_RGBA,GL_UNSIGNED_BYTE, data);
-        e =eglGetError();
+        e =glGetError();
         if(e != 0){
             LOGE("%s:%d : error = %d: glTexImage2D failed!", __FILE_NAME__, __LINE__, e);
             return false;
         }
         glBindTexture(GL_TEXTURE_2D, 0);
+        glFlush();
         return true;
+    }
+
+    bool NativeEngine::Running_AnyThread() {
+        return mCreateTextureSuccess;
     }
 } // saturnv

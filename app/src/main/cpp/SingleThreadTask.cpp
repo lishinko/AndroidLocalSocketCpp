@@ -3,6 +3,7 @@
 //
 
 #include "SingleThreadTask.h"
+#include <android/log.h>
 #include <vector>
 
 #define LOG_TAG "LocalSocketServer"
@@ -12,7 +13,6 @@
 
 namespace saturnv {
     SingleThreadTask::~SingleThreadTask() {
-
         s_glThreadRunning = false;
         if(s_glThread.joinable())
         {
@@ -32,8 +32,11 @@ namespace saturnv {
     }
 
     void SingleThreadTask::StartThread() {
+        LOGI("SingleThreadTask::StartThread! thread = %d", std::this_thread::get_id());
+        s_glThreadRunning = true;
         s_glThread = std::thread([this](){
-            std::unique_lock lock(s_taskVarLock);
+            LOGI("SingleThreadTask::StartThread!, thread = %d", std::this_thread::get_id());
+            std::unique_lock<std::mutex> lock(s_taskVarLock);
             while (s_glThreadRunning)
             {
                 std::chrono::milliseconds waitDur(1000);
@@ -53,6 +56,7 @@ namespace saturnv {
                 }
                 s_tasksLock.unlock();
                 for(auto& f : mTempFuncs){
+//                    LOGI("SingleThreadTask::StartThread executing funcs!");
                     f();
                 }
                 mTempFuncs.clear();

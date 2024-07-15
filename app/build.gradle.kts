@@ -48,6 +48,8 @@ android {
     buildFeatures {
         viewBinding = true
     }
+    buildToolsVersion = "34.0.0"
+    ndkVersion = "25.2.9519653"
 }
 
 dependencies {

@@ -11,6 +11,7 @@ extern "C"{
 #endif
     void startTestThread();
     void stopTestThread();
+    bool serviceRunning();
     uint32_t getTexture(int32_t id);
     void startService();
     void stopService();
