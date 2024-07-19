@@ -28,6 +28,8 @@ namespace saturnv {
         mIsFirstFrame = true;
 
         mSurfWidth = mSurfHeight = 0;
+
+        mCreateTextureSuccess = false;
     }
 
     bool NativeEngine::InitDisplay() {
@@ -75,10 +77,28 @@ namespace saturnv {
             delete[] mTextures;
             mTextures = nullptr;
         }
+        glFlush();
+        if(!eglMakeCurrent(mEglDisplay, nullptr, nullptr, nullptr))
+        {
+            LOGE("%s:%d : error = %d: eglMakeCurrent failed!", __FILE_NAME__, __LINE__, eglGetError());
+        }
+        if(!eglDestroySurface(mEglDisplay, mEglSurface))
+        {
+            LOGE("%s:%d : error = %d: eglDestroySurface failed!", __FILE_NAME__, __LINE__, eglGetError());
+        }
+        if(!eglDestroyContext(mEglDisplay, mEglContext))
+        {
+            LOGE("%s:%d : error = %d: eglDestroyContext failed!", __FILE_NAME__, __LINE__, eglGetError());
+        }
+        if(!eglTerminate(mEglDisplay))
+        {
+            LOGE("%s:%d : error = %d: eglTerminate failed!", __FILE_NAME__, __LINE__, eglGetError());
+        }
+        LOGI("egl context cleared!");
     }
 
     int NativeEngine::GetTextureId(int id) {
-        LOGI("NativeEngine::GetTextureId, id = %d, m = %llx, num = %d", id, mTextures, mTextureNum);
+//        LOGI("NativeEngine::GetTextureId, id = %d, m = %llx, num = %d", id, mTextures, mTextureNum);
         if(mTextures != nullptr && id < mTextureNum){
             return  mTextures[id];
         }

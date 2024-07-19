@@ -11,18 +11,21 @@ extern "C"{
 #endif
 
 #pragma region C语言任务分配工具
-    typedef struct TaskData{
+#pragma pack(1)
+    typedef struct _TaskData{
         void* data;
         int32_t length;
-    };
+    }TaskData;
+#pragma pack()
     //处理任务。0表示处理成功。
     //不管处理结果如何，用户都必须保证数据在DisposeTaskData回调之前有效。
     //如果返回值 ！= 0，则任务处理函数会打印日志.
-    typedef int32_t (*HandleTask)(TaskData* data);
+    typedef int32_t (*HandleTask)(TaskData data);
     //销毁TaskData。用户自己销毁并保证销毁之后的数据不再使用
-    typedef void (*DisposeTaskData)(TaskData* data);
+    typedef void (*DisposeTaskData)(TaskData data);
     //将任务添加到opengl线程.java代码应该封装该函数并调用。
-    int32_t enqueueTask(HandleTask* handleCallback,DisposeTaskData* disposeCallback, TaskData* data);
+    int32_t enqueueTask(HandleTask* handleCallback,DisposeTaskData* disposeCallback, TaskData data);
+    void enqueueRenderTask(void* data, int length);
 #pragma endregion
 
     //测试线程，正常代码不要调用。Unity调用，用来证明textureid被刷新了

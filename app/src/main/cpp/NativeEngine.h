@@ -15,6 +15,7 @@ namespace saturnv {
         bool InitOpenGL();
 
         bool CreateTexture(int textureNum);
+        //0 1 2 3 = 前左右后
         int GetTextureId(int id);
         bool UpdateTexture(int id, const char* data, int dataLength);
         //是否启动opengl成功，可以继续了？
